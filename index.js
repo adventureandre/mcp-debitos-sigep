@@ -15,7 +15,7 @@ const API_BASE_URL = process.env.API_DEBITOS_SIGEP_URL || "http://localhost:3333
 
 server.tool(
   "findDebit",
-  "Buscar Debitos pelo CNPJ",
+  "Buscar Debitos em aberto pelo CNPJ. Retorna lista de débitos com valor_total já recalculado (juros/multa/correção). Use o campo 'codigo_debito' para gerar PIX.",
   {
     cnpj: z.string().describe("CNPJ para buscar débitos (somente números)"),
     page: z.number().optional().default(1).describe("Número da página"),
@@ -35,7 +35,7 @@ server.tool(
 
       const data = await response.json();
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, ...data }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
     } catch (error) {
       return {
@@ -51,7 +51,7 @@ server.tool(
 
 server.tool(
   "findDebitByCpf",
-  "Buscar Debitos pelo CPF",
+  "Buscar Debitos em aberto pelo CPF. Retorna lista de débitos com valor_total já recalculado (juros/multa/correção). Use o campo 'codigo_debito' para gerar PIX.",
   {
     cpf: z.string().describe("CPF para buscar débitos (somente números)"),
     page: z.number().optional().default(1).describe("Número da página"),
@@ -71,7 +71,7 @@ server.tool(
 
       const data = await response.json();
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, ...data }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
     } catch (error) {
       return {
@@ -87,7 +87,7 @@ server.tool(
 
 server.tool(
   "findDebitIptuByCpf",
-  "Buscar Debitos de IPTU pelo CPF",
+  "Buscar Debitos de IPTU em aberto pelo CPF. Retorna lista de débitos com valor_total já recalculado. Use o campo 'codigo_debito' para gerar PIX.",
   {
     cpf: z.string().describe("CPF para buscar débitos de IPTU (somente números)"),
     page: z.number().optional().default(1).describe("Número da página"),
@@ -107,7 +107,41 @@ server.tool(
 
       const data = await response.json();
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, ...data }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: error.message }, null, 2) }],
+      };
+    }
+  }
+);
+
+// ========================================
+// Tool: Gerar PIX para um Debito
+// ========================================
+
+server.tool(
+  "generatePix",
+  "Gerar QR Code PIX para pagamento de um débito. IMPORTANTE: use o campo 'codigo_debito' retornado pela busca de débitos, NÃO o 'id_debito'.",
+  {
+    codigoDebito: z.number().describe("O 'codigo_debito' do débito (ex: 306044966). Obtido na listagem de débitos."),
+  },
+  async ({ codigoDebito }) => {
+    try {
+      const url = `${API_BASE_URL}/pix/gerar/${codigoDebito}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, status: response.status, error: errorText }, null, 2) }],
+        };
+      }
+
+      const data = await response.json();
+      return {
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };
     } catch (error) {
       return {
